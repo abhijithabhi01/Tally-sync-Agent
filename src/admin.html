@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tally Sync — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* ── Reset & base ────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0d0e12;
+    --surface:  #13151c;
+    --surface2: #1a1d27;
+    --border:   #252836;
+    --amber:    #f0a500;
+    --amber-dim:#f0a50033;
+    --green:    #22c55e;
+    --red:      #ef4444;
+    --blue:     #3b82f6;
+    --text:     #e8e9f0;
+    --muted:    #6b7280;
+    --mono:     'IBM Plex Mono', monospace;
+    --sans:     'Sora', sans-serif;
+    --radius:   8px;
+    --transition: 150ms ease;
+  }
+
+  html { font-size: 14px; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Scrollbar ───────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── Layout ──────────────────────────────────────────────── */
+  .shell {
+    display: grid;
+    grid-template-rows: 56px 1fr;
+    min-height: 100vh;
+  }
+
+  /* ── Top bar ─────────────────────────────────────────────── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: .04em;
+    color: var(--amber);
+    flex-shrink: 0;
+  }
+
+  .logo svg { flex-shrink: 0; }
+
+  .divider-v {
+    width: 1px;
+    height: 24px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  /* Status pill */
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background var(--transition);
+  }
+
+  .dot.up   { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .dot.down { background: var(--red);   box-shadow: 0 0 6px var(--red); }
+
+  .spacer { flex: 1; }
+
+  .stats-bar {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .stat {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .stat span {
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--text);
+  }
+
+  .stat.s-synced  span { color: var(--green); }
+  .stat.s-pending span { color: var(--amber); }
+  .stat.s-error   span { color: var(--red); }
+
+  /* ── Buttons ─────────────────────────────────────────────── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: var(--radius);
+    border: none;
+    cursor: pointer;
+    font-family: var(--sans);
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all var(--transition);
+    white-space: nowrap;
+  }
+
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  .btn-primary {
+    background: var(--amber);
+    color: #000;
+  }
+  .btn-primary:not(:disabled):hover { background: #fbbf24; }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:not(:disabled):hover { background: var(--surface2); border-color: var(--amber); color: var(--amber); }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--red);
+    border: 1px solid #ef444433;
+  }
+  .btn-danger:not(:disabled):hover { background: #ef44440f; border-color: var(--red); }
+
+  .btn-sm {
+    padding: 4px 9px;
+    font-size: 0.72rem;
+  }
+
+  .btn-icon {
+    padding: 5px;
+    border-radius: 6px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all var(--transition);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .btn-icon:hover { background: var(--surface2); color: var(--text); border-color: var(--amber); }
+  .btn-icon.danger:hover { border-color: var(--red); color: var(--red); }
+
+  /* ── Main content ────────────────────────────────────────── */
+  .main {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* ── Toolbar ─────────────────────────────────────────────── */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+    max-width: 360px;
+  }
+
+  .search-wrap svg {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
+  }
+
+  .search-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 0.8rem;
+    padding: 7px 12px 7px 32px;
+    outline: none;
+    transition: border-color var(--transition);
+  }
+  .search-input:focus { border-color: var(--amber); }
+  .search-input::placeholder { color: var(--muted); }
+
+  .filter-select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 0.8rem;
+    padding: 7px 12px;
+    outline: none;
+    cursor: pointer;
+    transition: border-color var(--transition);
+  }
+  .filter-select:focus { border-color: var(--amber); }
+  .filter-select option { background: var(--surface2); }
+
+  /* ── Table card ──────────────────────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  thead th {
+    background: var(--surface2);
+    padding: 10px 14px;
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 0.67rem;
+    font-weight: 500;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background var(--transition);
+  }
+
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody tr.editing { background: #f0a50008; }
+
+  tbody td {
+    padding: 11px 14px;
+    font-size: 0.82rem;
+    vertical-align: middle;
+  }
+
+  td.mono {
+    font-family: var(--mono);
+    font-size: 0.76rem;
+    color: var(--muted);
+  }
+
+  td.amount {
+    font-family: var(--mono);
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  /* ── Status badge ────────────────────────────────────────── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 0.67rem;
+    font-weight: 500;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+  }
+
+  .badge-synced  { background: #22c55e15; color: var(--green); border: 1px solid #22c55e33; }
+  .badge-pending { background: #f0a50015; color: var(--amber); border: 1px solid #f0a50033; }
+  .badge-error   { background: #ef444415; color: var(--red);   border: 1px solid #ef444433; }
+
+  /* ── Inline edit inputs ──────────────────────────────────── */
+  .edit-input {
+    background: var(--bg);
+    border: 1px solid var(--amber);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.82rem;
+    padding: 4px 8px;
+    outline: none;
+    width: 100%;
+    min-width: 80px;
+  }
+
+  .edit-input.narrow { width: 100px; }
+  .edit-input.wide   { width: 180px; }
+
+  /* ── Actions cell ────────────────────────────────────────── */
+  .actions {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    flex-wrap: nowrap;
+  }
+
+  /* ── Empty state ─────────────────────────────────────────── */
+  .empty {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  .empty svg { margin-bottom: 12px; opacity: .3; }
+
+  /* ── Loading spinner ─────────────────────────────────────── */
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--amber);
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Toast ───────────────────────────────────────────────── */
+  #toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .toast {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    font-size: 0.82rem;
+    min-width: 260px;
+    max-width: 380px;
+    animation: slideIn .2s ease;
+    box-shadow: 0 8px 32px #00000060;
+  }
+  .toast.success { border-color: #22c55e44; }
+  .toast.error   { border-color: #ef444444; }
+
+  .toast-icon { flex-shrink: 0; }
+  .toast-msg  { flex: 1; }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slideOut {
+    to { opacity: 0; transform: translateY(10px); }
+  }
+
+  /* ── Modal ───────────────────────────────────────────────── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #00000088;
+    backdrop-filter: blur(3px);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 540px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 28px;
+    animation: modalIn .2s ease;
+    box-shadow: 0 24px 64px #00000080;
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(.97); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .modal-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .modal-title svg { color: var(--amber); }
+
+  /* ── Form ────────────────────────────────────────────────── */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+
+  label {
+    font-family: var(--mono);
+    font-size: 0.67rem;
+    font-weight: 500;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .form-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 0.82rem;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color var(--transition);
+    width: 100%;
+  }
+  .form-input:focus { border-color: var(--amber); }
+  .form-input::placeholder { color: var(--muted); }
+
+  /* ── Legs section ────────────────────────────────────────── */
+  .legs-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    margin-top: 4px;
+  }
+
+  .legs-label {
+    font-family: var(--mono);
+    font-size: 0.67rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .leg-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .modal-footer {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 24px;
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+  }
+
+  /* ── Confirm dialog ──────────────────────────────────────── */
+  .confirm-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #00000088;
+    backdrop-filter: blur(3px);
+    z-index: 600;
+    align-items: center;
+    justify-content: center;
+  }
+  .confirm-overlay.open { display: flex; }
+
+  .confirm-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    width: 360px;
+    box-shadow: 0 24px 64px #00000080;
+  }
+
+  .confirm-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--red);
+  }
+
+  .confirm-body  { font-size: 0.82rem; color: var(--muted); margin-bottom: 20px; line-height: 1.5; }
+  .confirm-check { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; margin-bottom: 20px; cursor: pointer; }
+  .confirm-check input { accent-color: var(--amber); cursor: pointer; }
+  .confirm-footer { display: flex; gap: 10px; justify-content: flex-end; }
+
+  /* ── Last-updated line ───────────────────────────────────── */
+  .meta-line {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ── Responsive ──────────────────────────────────────────── */
+  @media (max-width: 640px) {
+    .stats-bar { display: none; }
+    .form-grid { grid-template-columns: 1fr; }
+    .main { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ── Top bar ─────────────────────────────────────────────────────────── -->
+  <header class="topbar">
+    <div class="logo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+      </svg>
+      TALLY SYNC
+    </div>
+
+    <div class="divider-v"></div>
+
+    <div class="status-pill">
+      <div class="dot" id="tally-dot"></div>
+      <span id="tally-label">Checking Tally…</span>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="stats-bar">
+      <div class="stat">Total <span id="st-total">—</span></div>
+      <div class="stat s-synced">Synced <span id="st-synced">—</span></div>
+      <div class="stat s-pending">Pending <span id="st-pending">—</span></div>
+      <div class="stat s-error">Error <span id="st-error">—</span></div>
+    </div>
+
+    <div class="divider-v"></div>
+
+    <button class="btn btn-ghost" id="btn-sync" onclick="triggerSync()">
+      <svg id="sync-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M21 2v6h-6M3 12a9 9 0 0115-6.7L21 8M3 22v-6h6M21 12a9 9 0 01-15 6.7L3 16"/>
+      </svg>
+      Sync Now
+    </button>
+
+    <button class="btn btn-primary" onclick="openCreateModal()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New Voucher
+    </button>
+  </header>
+
+  <!-- ── Main ────────────────────────────────────────────────────────────── -->
+  <main class="main">
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+        </svg>
+        <input class="search-input" type="text" id="search" placeholder="Search party name, narration…" oninput="renderTable()" />
+      </div>
+
+      <select class="filter-select" id="filter-status" onchange="renderTable()">
+        <option value="">All Statuses</option>
+        <option value="synced">Synced</option>
+        <option value="pending">Pending</option>
+        <option value="error">Error</option>
+      </select>
+
+      <div class="spacer"></div>
+
+      <div class="meta-line">
+        Last refresh: <span id="last-refresh">—</span>
+        &nbsp;
+        <button class="btn-icon" title="Refresh" onclick="loadAll()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M21 2v6h-6M3 12a9 9 0 0115-6.7L21 8M3 22v-6h6M21 12a9 9 0 01-15 6.7L3 16"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Table card -->
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Party Name</th>
+              <th>Amount (₹)</th>
+              <th>Narration</th>
+              <th>Status</th>
+              <th>GUID</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="voucher-tbody">
+            <tr><td colspan="7" class="empty">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/>
+              </svg>
+              <div><span class="spinner"></span>&nbsp; Loading vouchers…</div>
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── Create Voucher Modal ────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="create-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Sales Voucher
+      </div>
+      <button class="btn-icon" onclick="closeCreateModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Party Name *</label>
+        <input class="form-input" type="text" id="c-partyName" placeholder="e.g. ABC Traders" />
+      </div>
+      <div class="form-group">
+        <label>Amount (₹) *</label>
+        <input class="form-input" type="number" id="c-amount" placeholder="0.00" min="0" step="0.01" />
+      </div>
+      <div class="form-group">
+        <label>Date *</label>
+        <input class="form-input" type="date" id="c-date" />
+      </div>
+      <div class="form-group">
+        <label>Sales Ledger</label>
+        <input class="form-input" type="text" id="c-salesLedger" placeholder="e.g. Sales Account" />
+      </div>
+      <div class="form-group full">
+        <label>Narration</label>
+        <input class="form-input" type="text" id="c-narration" placeholder="Optional note…" />
+      </div>
+      <div class="form-group full">
+        <div class="legs-header">
+          <span class="legs-label">Ledger Legs (for Tally)</span>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="addLeg()">+ Add Leg</button>
+        </div>
+        <div id="legs-container"></div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeCreateModal()">Cancel</button>
+      <button class="btn btn-primary" id="c-submit" onclick="submitCreate()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Create &amp; Push to Firestore
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Delete Confirm Modal ───────────────────────────────────────────────── -->
+<div class="confirm-overlay" id="confirm-modal">
+  <div class="confirm-box">
+    <div class="confirm-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+      </svg>
+      Delete Voucher
+    </div>
+    <div class="confirm-body" id="confirm-body">
+      This will remove the voucher from the local LevelDB store. Check below to also remove it from Firestore.
+    </div>
+    <label class="confirm-check">
+      <input type="checkbox" id="del-firestore" />
+      Also delete from Firestore
+    </label>
+    <div class="confirm-footer">
+      <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast container ───────────────────────────────────────────────────── -->
+<div id="toast-container"></div>
+
+<script>
+  // ── State ────────────────────────────────────────────────────────────────
+  let vouchers = [];
+  let editingGuid = null;
+  let pendingDeleteGuid = null;
+
+  // ── Toast ────────────────────────────────────────────────────────────────
+  function toast(msg, type = 'success') {
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    const icon = type === 'success'
+      ? `<svg class="toast-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`
+      : `<svg class="toast-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+    el.innerHTML = `${icon}<span class="toast-msg">${msg}</span>`;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => {
+      el.style.animation = 'slideOut .2s ease forwards';
+      el.addEventListener('animationend', () => el.remove());
+    }, 3500);
+  }
+
+  // ── Load status & vouchers ───────────────────────────────────────────────
+  async function loadStatus() {
+    try {
+      const r = await fetch('/api/status');
+      const d = await r.json();
+
+      const dot   = document.getElementById('tally-dot');
+      const label = document.getElementById('tally-label');
+
+      if (d.tallyReachable) {
+        dot.className = 'dot up';
+        label.textContent = 'Tally Online';
+      } else {
+        dot.className = 'dot down';
+        label.textContent = 'Tally Offline';
+      }
+
+      document.getElementById('st-total').textContent   = d.total   ?? 0;
+      document.getElementById('st-synced').textContent  = d.synced  ?? 0;
+      document.getElementById('st-pending').textContent = d.pending ?? 0;
+      document.getElementById('st-error').textContent   = d.error   ?? 0;
+    } catch {
+      document.getElementById('tally-label').textContent = 'Status unknown';
+    }
+  }
+
+  async function loadVouchers() {
+    const r = await fetch('/api/vouchers');
+    vouchers  = await r.json();
+    document.getElementById('last-refresh').textContent = new Date().toLocaleTimeString();
+    renderTable();
+  }
+
+  async function loadAll() {
+    await Promise.all([loadStatus(), loadVouchers()]);
+  }
+
+  // ── Render table ─────────────────────────────────────────────────────────
+  function filtered() {
+    const q  = document.getElementById('search').value.trim().toLowerCase();
+    const st = document.getElementById('filter-status').value;
+
+    return vouchers.filter(v => {
+      const matchQ = !q || [v.partyName, v.narration, v.guid].some(f => (f || '').toLowerCase().includes(q));
+      const matchS = !st || v.syncStatus === st;
+      return matchQ && matchS;
+    });
+  }
+
+  function badgeHTML(status) {
+    const labels = { synced: 'Synced', pending: 'Pending', error: 'Error' };
+    const cls    = { synced: 'badge-synced', pending: 'badge-pending', error: 'badge-error' };
+    return `<span class="badge ${cls[status] || 'badge-pending'}">${labels[status] || status}</span>`;
+  }
+
+  function renderTable() {
+    const rows = filtered();
+    const tbody = document.getElementById('voucher-tbody');
+
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="7" class="empty">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
+        <div style="margin-top:8px">No vouchers found</div>
+      </td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(v => {
+      const isEditing = editingGuid === v.guid;
+      const shortGuid = v.guid.slice(0, 8) + '…';
+
+      if (isEditing) {
+        return `<tr class="editing" data-guid="${v.guid}">
+          <td><input class="edit-input narrow" id="e-date"      value="${v.date}"      type="date" /></td>
+          <td><input class="edit-input wide"   id="e-partyName" value="${escH(v.partyName)}"  type="text" /></td>
+          <td><input class="edit-input narrow" id="e-amount"    value="${v.amount}"    type="number" min="0" step="0.01" /></td>
+          <td><input class="edit-input"        id="e-narration" value="${escH(v.narration)}" type="text" /></td>
+          <td>${badgeHTML(v.syncStatus)}</td>
+          <td class="mono" title="${v.guid}">${shortGuid}</td>
+          <td>
+            <div class="actions">
+              <button class="btn btn-primary btn-sm" onclick="saveEdit('${v.guid}')">Save</button>
+              <button class="btn btn-ghost btn-sm"   onclick="cancelEdit()">Cancel</button>
+            </div>
+          </td>
+        </tr>`;
+      }
+
+      return `<tr data-guid="${v.guid}">
+        <td class="mono">${v.date || '—'}</td>
+        <td>${escH(v.partyName) || '—'}</td>
+        <td class="amount">₹${Number(v.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+        <td style="color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(v.narration) || '—'}</td>
+        <td>${badgeHTML(v.syncStatus)}</td>
+        <td class="mono" title="${v.guid}">${shortGuid}</td>
+        <td>
+          <div class="actions">
+            <button class="btn-icon" title="Edit" onclick="startEdit('${v.guid}')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="btn-icon" title="Push to Firestore" onclick="pushFirestore('${v.guid}')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg>
+            </button>
+            <button class="btn-icon" title="Push to Tally" onclick="pushTally('${v.guid}')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f0a500" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </button>
+            <button class="btn-icon danger" title="Delete" onclick="askDelete('${v.guid}', '${escH(v.partyName)}')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            </button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function escH(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Inline edit ──────────────────────────────────────────────────────────
+  function startEdit(guid) {
+    editingGuid = guid;
+    renderTable();
+    document.getElementById('e-partyName')?.focus();
+  }
+
+  function cancelEdit() {
+    editingGuid = null;
+    renderTable();
+  }
+
+  async function saveEdit(guid) {
+    const btn = document.querySelector(`tr[data-guid="${guid}"] .btn-primary`);
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
+
+    const body = {
+      date:      document.getElementById('e-date').value,
+      partyName: document.getElementById('e-partyName').value,
+      amount:    document.getElementById('e-amount').value,
+      narration: document.getElementById('e-narration').value,
+    };
+
+    try {
+      const r = await fetch(`/api/vouchers/${guid}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Save failed');
+
+      const i = vouchers.findIndex(v => v.guid === guid);
+      if (i !== -1) vouchers[i] = d;
+      editingGuid = null;
+      renderTable();
+      toast('Voucher saved and synced to Firestore');
+      loadStatus();
+    } catch (err) {
+      toast(err.message, 'error');
+      if (btn) { btn.disabled = false; btn.innerHTML = 'Save'; }
+    }
+  }
+
+  // ── Push actions ─────────────────────────────────────────────────────────
+  async function pushFirestore(guid) {
+    const v = vouchers.find(x => x.guid === guid);
+    if (!v) return;
+    try {
+      const r = await fetch(`/api/vouchers/${guid}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(v),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      const i = vouchers.findIndex(x => x.guid === guid);
+      if (i !== -1) vouchers[i] = d;
+      renderTable();
+      loadStatus();
+      toast(`Pushed to Firestore — ${v.partyName}`);
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+
+  async function pushTally(guid) {
+    const v = vouchers.find(x => x.guid === guid);
+    try {
+      const r = await fetch(`/api/vouchers/${guid}/tally`, { method: 'POST' });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      toast(`Pushed to Tally — ${v?.partyName || guid.slice(0,8)}`);
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+
+  // ── Sync Now ─────────────────────────────────────────────────────────────
+  async function triggerSync() {
+    const btn  = document.getElementById('btn-sync');
+    const icon = document.getElementById('sync-icon');
+    btn.disabled = true;
+    icon.style.animation = 'spin .6s linear infinite';
+
+    try {
+      const r = await fetch('/api/sync', { method: 'POST' });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      toast(d.message || 'Sync complete');
+      await loadAll();
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      icon.style.animation = '';
+    }
+  }
+
+  // ── Delete ───────────────────────────────────────────────────────────────
+  function askDelete(guid, name) {
+    pendingDeleteGuid = guid;
+    document.getElementById('confirm-body').textContent =
+      `Delete voucher for "${name}"? This removes it from the local LevelDB store.`;
+    document.getElementById('del-firestore').checked = false;
+    document.getElementById('confirm-modal').classList.add('open');
+  }
+
+  function closeConfirm() {
+    document.getElementById('confirm-modal').classList.remove('open');
+    pendingDeleteGuid = null;
+  }
+
+  async function confirmDelete() {
+    if (!pendingDeleteGuid) return;
+    const delFS  = document.getElementById('del-firestore').checked;
+    const guid   = pendingDeleteGuid;
+    closeConfirm();
+
+    try {
+      const r = await fetch(`/api/vouchers/${guid}?firestore=${delFS}`, { method: 'DELETE' });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      vouchers = vouchers.filter(v => v.guid !== guid);
+      renderTable();
+      loadStatus();
+      toast(`Deleted${delFS ? ' from LevelDB + Firestore' : ' from LevelDB'}`);
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  }
+
+  // ── Create Voucher Modal ─────────────────────────────────────────────────
+  let legCount = 0;
+
+  function openCreateModal() {
+    document.getElementById('c-partyName').value  = '';
+    document.getElementById('c-amount').value     = '';
+    document.getElementById('c-date').value       = new Date().toISOString().slice(0,10);
+    document.getElementById('c-salesLedger').value = '';
+    document.getElementById('c-narration').value  = '';
+    document.getElementById('legs-container').innerHTML = '';
+    legCount = 0;
+    document.getElementById('create-modal').classList.add('open');
+    document.getElementById('c-partyName').focus();
+  }
+
+  function closeCreateModal() {
+    document.getElementById('create-modal').classList.remove('open');
+  }
+
+  function addLeg() {
+    legCount++;
+    const id  = legCount;
+    const row = document.createElement('div');
+    row.className = 'leg-row';
+    row.id        = `leg-${id}`;
+    row.innerHTML = `
+      <input class="form-input" type="text"   placeholder="Ledger name" id="leg-ledger-${id}" />
+      <input class="form-input narrow" type="number" placeholder="Amount" id="leg-amount-${id}" min="0" step="0.01" />
+      <button class="btn-icon danger" type="button" onclick="removeLeg(${id})">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>`;
+    document.getElementById('legs-container').appendChild(row);
+  }
+
+  function removeLeg(id) {
+    document.getElementById(`leg-${id}`)?.remove();
+  }
+
+  function collectLegs() {
+    const legs = [];
+    document.querySelectorAll('#legs-container .leg-row').forEach(row => {
+      const id     = row.id.replace('leg-','');
+      const ledger = document.getElementById(`leg-ledger-${id}`)?.value.trim();
+      const amount = document.getElementById(`leg-amount-${id}`)?.value;
+      if (ledger) legs.push({ ledger, amount });
+    });
+    return legs;
+  }
+
+  async function submitCreate() {
+    const btn = document.getElementById('c-submit');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Creating…';
+
+    const body = {
+      partyName:   document.getElementById('c-partyName').value.trim(),
+      amount:      document.getElementById('c-amount').value,
+      date:        document.getElementById('c-date').value,
+      narration:   document.getElementById('c-narration').value.trim(),
+      salesLedger: document.getElementById('c-salesLedger').value.trim(),
+      legs:        collectLegs(),
+    };
+
+    try {
+      const r = await fetch('/api/vouchers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Create failed');
+
+      vouchers.unshift(d);
+      renderTable();
+      loadStatus();
+      closeCreateModal();
+      toast(`Created & synced — ${d.partyName} ₹${d.amount}`);
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Create & Push to Firestore`;
+    }
+  }
+
+  // ── Close modals on overlay click ────────────────────────────────────────
+  document.getElementById('create-modal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeCreateModal();
+  });
+  document.getElementById('confirm-modal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeConfirm();
+  });
+
+  // ── Init & auto-refresh ──────────────────────────────────────────────────
+  loadAll();
+  setInterval(loadAll, 30000); // auto-refresh every 30s
+</script>
+</body>
+</html>
